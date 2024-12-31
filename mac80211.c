@@ -995,11 +995,11 @@ int __mt76_set_channel(struct mt76_phy *phy, struct cfg80211_chan_def *chandef,
 
 	if (chandef->chan != phy->main_chandef.chan)
 		memset(phy->chan_state, 0, sizeof(*phy->chan_state));
-	mt76_worker_enable(&dev->tx_worker);
 
 	ret = dev->drv->set_channel(phy);
 
 	clear_bit(MT76_RESET, &phy->state);
+	mt76_worker_enable(&dev->tx_worker);
 	mt76_worker_schedule(&dev->tx_worker);
 
 	return ret;
@@ -1675,6 +1675,18 @@ void mt76_wcid_cleanup(struct mt76_dev *dev, struct mt76_wcid *wcid)
 	}
 }
 EXPORT_SYMBOL_GPL(mt76_wcid_cleanup);
+
+void mt76_wcid_add_poll(struct mt76_dev *dev, struct mt76_wcid *wcid)
+{
+	if (test_bit(MT76_MCU_RESET, &dev->phy.state))
+		return;
+
+	spin_lock_bh(&dev->sta_poll_lock);
+	if (list_empty(&wcid->poll_list))
+		list_add_tail(&wcid->poll_list, &dev->sta_poll_list);
+	spin_unlock_bh(&dev->sta_poll_lock);
+}
+EXPORT_SYMBOL_GPL(mt76_wcid_add_poll);
 
 int mt76_get_txpower(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		     int *dbm)

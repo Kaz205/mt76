@@ -284,6 +284,9 @@ struct mt7996_mcu_wed_rro_ba_delete_event {
 	__le16 len;
 
 	__le16 session_id;
+	__le16 wlan_id;
+	u8 tid;
+	u8 __rsv1;
 	u8 __rsv2[2];
 } __packed;
 
@@ -291,6 +294,39 @@ enum  {
 	UNI_WED_RRO_BA_SESSION_STATUS,
 	UNI_WED_RRO_BA_SESSION_TBL,
 	UNI_WED_RRO_BA_SESSION_DELETE,
+};
+
+struct mt7996_mcu_ps_sync_event {
+	struct mt7996_mcu_rxd rxd;
+
+	u8 bss_idx;
+	u8 __rsv[3];
+} __packed;
+
+struct mt7996_mcu_ps_client_info {
+	__le16 tag;
+	__le16 len;
+	u8 ps_bit;
+	u8 __rsv;
+	__le16 wlan_idx;
+	u8 buffer_size;
+	u8 __rsv2[3];
+} __packed;
+
+struct mt7996_mcu_ps_multi_client_info {
+	__le16 tag;
+	__le16 len;
+	__le16 sta_cnt;
+	__le16 sta_ps_info[];
+} __packed;
+
+#define MT7996_PS_MULTI_WCID	GENMASK(10, 0)
+#define MT7996_PS_MULTI_PS_BIT	BIT(15)
+
+enum {
+	UNI_PS_CLIENT_INFO = 0,
+	UNI_PS_MULTI_CLIENT_INFO = 1,
+	UNI_PS_MULTI_CLIENT_INFO_BITMAP = 2,
 };
 
 struct mt7996_mcu_thermal_notify {
@@ -524,6 +560,18 @@ struct bss_prot_tlv {
 	__le32 prot_mode;
 } __packed;
 
+struct bss_mld_link_op_tlv {
+	__le16 tag;
+	__le16 len;
+	u8 group_mld_id;
+	u8 own_mld_id;
+	u8 mac_addr[ETH_ALEN];
+	u8 remap_idx;
+	u8 link_operation;
+	u8 link_id;
+	u8 rsv[2];
+} __packed;
+
 struct sta_rec_ht_uni {
 	__le16 tag;
 	__le16 len;
@@ -668,6 +716,12 @@ struct sta_rec_hdr_trans {
 	u8 mesh;
 } __packed;
 
+struct sta_rec_ps_leave {
+	__le16 tag;
+	__le16 len;
+	u8 __rsv[4];
+} __packed;
+
 struct sta_rec_mld_setup {
 	__le16 tag;
 	__le16 len;
@@ -696,6 +750,28 @@ struct mld_setup_link {
 	u8 bss_idx;
 	u8 __rsv;
 } __packed;
+
+struct mld_req_hdr {
+	u8 ver;
+	u8 mld_addr[ETH_ALEN];
+	u8 mld_idx;
+	u8 flag;
+	u8 rsv[3];
+	u8 buf[];
+} __packed;
+
+struct mld_reconf_stop_link {
+	__le16 tag;
+	__le16 len;
+	__le16 link_bitmap;
+	u8 rsv[2];
+	u8 bss_idx[16];
+} __packed;
+
+enum {
+	UNI_CMD_MLD_RECONF_AP_REM_TIMER = 0x03,
+	UNI_CMD_MLD_RECONF_STOP_LINK = 0x04,
+};
 
 struct hdr_trans_en {
 	__le16 tag;
@@ -883,7 +959,7 @@ enum {
 #define MT7996_BEACON_UPDATE_SIZE	(sizeof(struct bss_req_hdr) +		\
 					 sizeof(struct bss_bcn_content_tlv) +	\
 					 4 + MT_TXD_SIZE +			\
-					 sizeof(struct bss_bcn_cntdwn_tlv) +	\
+					 sizeof(struct bss_bcn_cntdwn_tlv) * 2 +	\
 					 sizeof(struct bss_bcn_mbss_tlv))
 #define MT7996_MAX_BSS_OFFLOAD_SIZE	2048
 #define MT7996_MAX_BEACON_SIZE		(MT7996_MAX_BSS_OFFLOAD_SIZE - \
@@ -893,6 +969,7 @@ enum {
 	UNI_BAND_CONFIG_RADIO_ENABLE,
 	UNI_BAND_CONFIG_RTS_THRESHOLD = 0x08,
 	UNI_BAND_CONFIG_MAC_ENABLE_CTRL = 0x0c,
+	UNI_BAND_CONFIG_BSSID_MAPPING_ADDR = 0x12,
 };
 
 enum {
@@ -918,6 +995,7 @@ enum {
 
 enum {
 	UNI_VOW_DRR_CTRL,
+	UNI_VOW_FEATURE_CTRL,
 	UNI_VOW_RX_AT_AIRTIME_EN = 0x0b,
 	UNI_VOW_RX_AT_AIRTIME_CLR_EN = 0x0e,
 };
